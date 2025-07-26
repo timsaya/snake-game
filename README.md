@@ -19,10 +19,10 @@ A classic snake game developed using [Slint](https://slint.rs/) and Rust.
 ## Game Controls
 
 ### Keyboard Controls
-- **W** or **↑**: Move Up
-- **S** or **↓**: Move Down
-- **A** or **←**: Move Left
-- **D** or **→**: Move Right
+- **↑**: Move Up
+- **↓**: Move Down
+- **←**: Move Left
+- **→**: Move Right
 - **Space**: Pause/Resume game
 - **R**: Reset game
 
