@@ -11,6 +11,11 @@ A classic snake game developed using [Slint](https://slint.rs/) and Rust.
 - 🔄 One-click game reset
 - 🎨 Modern user interface
 
+## Screenshot
+
+![Snake Game Screenshot](docs/images/index.png)
+
+
 ## Game Controls
 
 ### Keyboard Controls
