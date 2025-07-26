@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game - Slint Rust Version</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            text-align: center;
+            color: white;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .game-container {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .loading {
+            font-size: 1.2em;
+            margin: 20px 0;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Snake Game</h1>
+        <div class="game-container">
+            <canvas id="canvas"></canvas>
+        </div>
+        <div class="loading" id="loading">Loading game...</div>
+        <div class="instructions">
+            <p>Use arrow keys to control snake movement</p>
+            <p>Space to pause/resume, R to reset game</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { start_app } from './pkg/snake_game.js';
+        
+        async function run() {
+            try {
+                await init();
+                document.getElementById('loading').style.display = 'none';
+                // Add a small delay to ensure WASM is fully initialized
+                setTimeout(() => {
+                    try {
+                        start_app();
+                    } catch (error) {
+                        console.error('Failed to start app:', error);
+                        document.getElementById('loading').textContent = 'Game loading failed, please refresh the page and try again';
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Failed to initialize WASM:', error);
+                document.getElementById('loading').textContent = 'Game loading failed, please refresh the page and try again';
+            }
+        }
+        
+        run();
+    </script>
+</body>
+</html> 

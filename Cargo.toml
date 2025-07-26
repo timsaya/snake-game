@@ -1,0 +1,21 @@
+[package]
+name = "snake-game"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+slint = "1.12.1"
+rand = { version = "0.8.5", features = ["getrandom"] }
+getrandom = { version = "0.2", features = ["js"] }
+wasm-bindgen = { version = "0.2.100" }
+
+[build-dependencies]
+slint-build = "1.12.1"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+wasm-bindgen = { version = "0.2.100" }

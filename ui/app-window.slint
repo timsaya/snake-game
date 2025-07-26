@@ -1,0 +1,279 @@
+import { Button, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+struct Position {
+    x: int,
+    y: int,
+}
+
+export component AppWindow inherits Window {
+    callback start_game;
+    callback pause_game;
+    callback reset_game;
+    callback move_snake(int);
+    callback game_tick();
+    
+    in property <int> score;
+    in property <int> high_score;
+    in property <bool> game_over;
+    in property <bool> game_paused;
+    in property <bool> game_running;
+    in property <[Position]> snake_positions: [];
+    in property <Position> food_position;
+    in property <int> grid_size: 20;
+    in property <int> cell_size: 20;
+    
+    background: #667eea;
+    title: "Snake Game - Slint Rust Version";
+    
+    width: 900px;
+    height: 700px;
+    
+    // Game timer
+    Timer {
+        interval: 200ms;
+        running: game_running && !game_paused && !game_over;
+        triggered => {
+            game_tick();
+        }
+    }
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 20px;
+        
+        // Top info bar - card design
+        Rectangle {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            border-width: 1px;
+            border-color: rgba(255, 255, 255, 0.3);
+            
+            HorizontalLayout {
+                padding: 15px;
+                alignment: space-between;
+                
+                // Score display
+                VerticalLayout {
+                    alignment: center;
+                    
+                    Text {
+                        text: "Current Score";
+                        color: rgba(255, 255, 255, 0.9);
+                        font-size: 14px;
+                        font-weight: 500;
+                    }
+                    
+                    Text {
+                        text: score;
+                        color: #ffffff;
+                        font-size: 32px;
+                        font-weight: 800;
+                    }
+                }
+                
+                // High score display
+                VerticalLayout {
+                    alignment: center;
+                    
+                    Text {
+                        text: "High Score";
+                        color: rgba(255, 255, 255, 0.9);
+                        font-size: 14px;
+                        font-weight: 500;
+                    }
+                    
+                    Text {
+                        text: high_score;
+                        color: #ffd700;
+                        font-size: 32px;
+                        font-weight: 800;
+                    }
+                }
+            }
+        }
+        
+        // Game status display - dynamic status card
+        Rectangle {
+            background: game_over ? rgba(231, 76, 60, 0.2) : (game_running && game_paused) ? rgba(243, 156, 18, 0.2) : game_running ? rgba(39, 174, 96, 0.2) : rgba(149, 165, 166, 0.2);
+            border-radius: 12px;
+            border-width: 1px;
+            border-color: game_over ? rgba(231, 76, 60, 0.4) : (game_running && game_paused) ? rgba(243, 156, 18, 0.4) : game_running ? rgba(39, 174, 96, 0.4) : rgba(149, 165, 166, 0.4);
+            
+            HorizontalLayout {
+                alignment: center;
+                padding: 12px;
+                
+                Text {
+                    text: game_over ? "GAME OVER!" : (game_running && game_paused) ? "PAUSED" : game_running ? "RUNNING" : "READY";
+                    color: game_over ? #e74c3c : (game_running && game_paused) ? #f39c12 : game_running ? #ffffff : #95a5a6;
+                    font-size: 18px;
+                    font-weight: 700;
+                }
+            }
+        }
+
+        HorizontalLayout {
+            alignment: center;
+            spacing: 25px;
+            
+            // Left side game instructions - card design
+            Rectangle {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 15px;
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.3);
+                width: 180px;
+                
+                VerticalLayout {
+                    padding: 20px;
+                    spacing: 15px;
+                    
+                    Text {
+                        text: "GAME RULES";
+                        color: #ffffff;
+                        font-size: 16px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                    }
+                    
+                    Text {
+                        text: "• Control snake to eat food\n• Get 10 points per food\n• Snake grows longer\n• Avoid hitting yourself\n• Can pass through borders";
+                        color: rgba(255, 255, 255, 0.9);
+                        font-size: 13px;
+                        horizontal-alignment: left;
+                    }
+                }
+            }
+
+            // Game area - modern design
+            Rectangle {
+                background: #2c3e50;
+                border-radius: 20px;
+                border-width: 3px;
+                border-color: rgba(255, 255, 255, 0.3);
+                height: 400px;
+                width: 400px;
+                
+                // Dynamic snake body rendering - beautiful style
+                for position[index] in snake_positions: Rectangle {
+                    x: position.x * cell_size * 1px;
+                    y: position.y * cell_size * 1px;
+                    width: cell_size * 1px;
+                    height: cell_size * 1px;
+                    background: index == 0 ? #2ecc71 : #27ae60;
+                    border-radius: 3px;
+                    border-width: 1px;
+                    border-color: index == 0 ? #2ecc71 : #229954;
+                }
+                
+                // Food rendering - attractive style
+                Rectangle {
+                    x: food_position.x * cell_size * 1px;
+                    y: food_position.y * cell_size * 1px;
+                    width: cell_size * 1px;
+                    height: cell_size * 1px;
+                    background: #e74c3c;
+                    border-radius: (cell_size / 2) * 1px;
+                    border-width: 2px;
+                    border-color: #ffffff;
+                }
+            }
+            
+            // Right side control instructions - card design
+            Rectangle {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 15px;
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.3);
+                width: 180px;
+                
+                VerticalLayout {
+                    padding: 20px;
+                    spacing: 15px;
+                    
+                    Text {
+                        text: "CONTROLS";
+                        color: #ffffff;
+                        font-size: 16px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                    }
+                    
+                    Text {
+                        text: "Arrow Keys:\n↑ Move Up\n↓ Move Down\n← Move Left\n→ Move Right\n\nOther Controls:\nSpace Pause/Resume\nR Reset Game";
+                        color: rgba(255, 255, 255, 0.9);
+                        font-size: 13px;
+                        horizontal-alignment: left;
+                    }
+                }
+            }
+        }
+
+        // Control buttons - modern button design
+        Rectangle {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            border-width: 1px;
+            border-color: rgba(255, 255, 255, 0.3);
+            
+            HorizontalLayout {
+                alignment: center;
+                spacing: 20px;
+                padding: 20px;
+                
+                Button {
+                    text: (game_running && !game_paused) ? "PAUSE" : (game_running && game_paused) ? "RESUME" : "START";
+                    
+                    clicked => {
+                        if (game_running && !game_paused) {
+                            pause_game();
+                        } else if (game_running && game_paused) {
+                            pause_game();
+                        } else {
+                            start_game();
+                        }
+                    }
+                }
+
+                Button {
+                    text: "RESET";
+                    
+                    clicked => {
+                        reset_game();
+                    }
+                }
+            }
+        }
+    }
+    
+    // Keyboard controls
+    FocusScope {
+        key-pressed(k) => {
+            if (k.text == Key.UpArrow) {
+                move_snake(0);
+            }
+            if (k.text == Key.DownArrow) {
+                move_snake(1);
+            }
+            if (k.text == Key.LeftArrow) {
+                move_snake(2);
+            }
+            if (k.text == Key.RightArrow) {
+                move_snake(3);
+            }
+            if (k.text == " ") {
+                if (game_running && !game_paused) {
+                    pause_game();
+                } else if (game_running && game_paused) {
+                    pause_game();
+                } else {
+                    start_game();
+                }
+            }
+            if (k.text == "r" || k.text == "R") {
+                reset_game();
+            }
+            accept
+        }
+    }
+}
