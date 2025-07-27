@@ -6,13 +6,13 @@ struct Position {
 }
 
 export component AppWindow inherits Window {
+
     callback start_game;
     callback pause_game;
     callback reset_game;
     callback move_snake(int);
     callback game_tick();
     callback toggle_auto_mode();
-    
     in property <int> score;
     in property <int> high_score;
     in property <bool> game_over;
@@ -23,12 +23,11 @@ export component AppWindow inherits Window {
     in property <Position> food_position;
     in property <int> grid_size: 20;
     in property <int> cell_size: 20;
-    
     background: #667eea;
     title: "Snake Game - Slint Rust Version";
-    
     width: 900px;
     height: 700px;
+
     
     // Game timer
     Timer {
@@ -42,6 +41,10 @@ export component AppWindow inherits Window {
     VerticalLayout {
         padding: 20px;
         spacing: 20px;
+
+        padding-top: 30px;
+
+        
         
         // Top info bar - card design
         Rectangle {
@@ -49,7 +52,6 @@ export component AppWindow inherits Window {
             border-radius: 15px;
             border-width: 1px;
             border-color: rgba(255, 255, 255, 0.3);
-            
             HorizontalLayout {
                 padding: 15px;
                 alignment: space-between;
@@ -57,14 +59,13 @@ export component AppWindow inherits Window {
                 // Score display
                 VerticalLayout {
                     alignment: center;
-                    
                     Text {
                         text: "Current Score";
                         color: rgba(255, 255, 255, 0.9);
                         font-size: 14px;
                         font-weight: 500;
                     }
-                    
+
                     Text {
                         text: score;
                         color: #ffffff;
@@ -76,14 +77,13 @@ export component AppWindow inherits Window {
                 // High score display
                 VerticalLayout {
                     alignment: center;
-                    
                     Text {
                         text: "High Score";
                         color: rgba(255, 255, 255, 0.9);
                         font-size: 14px;
                         font-weight: 500;
                     }
-                    
+
                     Text {
                         text: high_score;
                         color: #ffd700;
@@ -100,11 +100,9 @@ export component AppWindow inherits Window {
             border-radius: 12px;
             border-width: 1px;
             border-color: game_over ? rgba(231, 76, 60, 0.4) : (game_running && game_paused) ? rgba(243, 156, 18, 0.4) : game_running ? rgba(39, 174, 96, 0.4) : rgba(149, 165, 166, 0.4);
-            
             HorizontalLayout {
                 alignment: center;
                 padding: 12px;
-                
                 Text {
                     text: game_over ? "GAME OVER!" : (game_running && game_paused) ? "PAUSED" : game_running ? "RUNNING" : "READY";
                     color: game_over ? #e74c3c : (game_running && game_paused) ? #f39c12 : game_running ? #ffffff : #95a5a6;
@@ -125,11 +123,9 @@ export component AppWindow inherits Window {
                 border-width: 1px;
                 border-color: rgba(255, 255, 255, 0.3);
                 width: 180px;
-                
                 VerticalLayout {
                     padding: 20px;
                     spacing: 15px;
-                    
                     Text {
                         text: "GAME RULES";
                         color: #ffffff;
@@ -137,7 +133,7 @@ export component AppWindow inherits Window {
                         font-weight: 700;
                         horizontal-alignment: center;
                     }
-                    
+
                     Text {
                         text: "• Control snake to eat food\n• Get 10 points per food\n• Snake grows longer\n• Avoid hitting yourself\n• Can pass through borders";
                         color: rgba(255, 255, 255, 0.9);
@@ -188,11 +184,9 @@ export component AppWindow inherits Window {
                 border-width: 1px;
                 border-color: rgba(255, 255, 255, 0.3);
                 width: 180px;
-                
                 VerticalLayout {
                     padding: 20px;
                     spacing: 15px;
-                    
                     Text {
                         text: "CONTROLS";
                         color: #ffffff;
@@ -200,7 +194,7 @@ export component AppWindow inherits Window {
                         font-weight: 700;
                         horizontal-alignment: center;
                     }
-                    
+
                     Text {
                         text: "Arrow Keys:\n↑ Move Up\n↓ Move Down\n← Move Left\n→ Move Right\n\nOther Controls:\nSpace Pause/Resume\nR Reset Game\nA Toggle Auto Mode";
                         color: rgba(255, 255, 255, 0.9);
@@ -217,15 +211,12 @@ export component AppWindow inherits Window {
             border-radius: 15px;
             border-width: 1px;
             border-color: rgba(255, 255, 255, 0.3);
-            
             HorizontalLayout {
                 alignment: center;
                 spacing: 20px;
                 padding: 20px;
-                
                 Button {
                     text: (game_running && !game_paused) ? "PAUSE" : (game_running && game_paused) ? "RESUME" : "START";
-                    
                     clicked => {
                         if (game_running && !game_paused) {
                             pause_game();
@@ -239,7 +230,6 @@ export component AppWindow inherits Window {
 
                 Button {
                     text: "RESET";
-                    
                     clicked => {
                         reset_game();
                     }
@@ -247,7 +237,6 @@ export component AppWindow inherits Window {
 
                 Button {
                     text: auto_mode ? "AUTO: ON" : "AUTO: OFF";
-                    
                     clicked => {
                         toggle_auto_mode();
                     }

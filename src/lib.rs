@@ -1,7 +1,7 @@
 use std::cell::RefCell;
-use std::collections::{VecDeque, HashSet, BinaryHeap};
-use std::rc::Rc;
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashSet, VecDeque};
+use std::rc::Rc;
 
 #[cfg(target_family = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -137,37 +137,42 @@ impl SnakeGame {
         // 模拟吃了食物后的蛇身
         let mut simulated_snake = self.snake.clone();
         simulated_snake.push_front(self.food);
-        
+
         // 检查从食物位置是否能到达蛇尾
         let tail = simulated_snake.back().unwrap();
         let path_to_tail = self.find_path(self.food, *tail, &simulated_snake);
-        
+
         path_to_tail.is_none()
     }
 
     // A*算法寻找最短路径
-    fn find_path(&self, start: GamePosition, goal: GamePosition, snake_body: &VecDeque<GamePosition>) -> Option<Vec<GamePosition>> {
+    fn find_path(
+        &self,
+        start: GamePosition,
+        goal: GamePosition,
+        snake_body: &VecDeque<GamePosition>,
+    ) -> Option<Vec<GamePosition>> {
         let mut open_set = BinaryHeap::new();
         let mut closed_set = HashSet::new();
         let mut came_from = std::collections::HashMap::new();
         let mut g_score = std::collections::HashMap::new();
-        
+
         open_set.push(AStarNode {
             position: start,
             g_cost: 0,
             h_cost: self.manhattan_distance(start, goal),
             parent: None,
         });
-        
+
         g_score.insert(start, 0);
-        
+
         while let Some(current) = open_set.pop() {
             if current.position == goal {
                 // 重建路径
                 let mut path = Vec::new();
                 let mut current_pos = current.position;
                 path.push(current_pos);
-                
+
                 while let Some(parent) = came_from.get(&current_pos) {
                     path.push(*parent);
                     current_pos = *parent;
@@ -175,20 +180,20 @@ impl SnakeGame {
                 path.reverse();
                 return Some(path);
             }
-            
+
             closed_set.insert(current.position);
-            
+
             for neighbor in self.get_neighbors(current.position) {
                 if closed_set.contains(&neighbor) || !self.is_safe_position(neighbor, snake_body) {
                     continue;
                 }
-                
+
                 let tentative_g_score = g_score.get(&current.position).unwrap_or(&i32::MAX) + 1;
-                
+
                 if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&i32::MAX) {
                     came_from.insert(neighbor, current.position);
                     g_score.insert(neighbor, tentative_g_score);
-                    
+
                     let h_score = self.manhattan_distance(neighbor, goal);
                     open_set.push(AStarNode {
                         position: neighbor,
@@ -199,7 +204,7 @@ impl SnakeGame {
                 }
             }
         }
-        
+
         None
     }
 
@@ -210,10 +215,10 @@ impl SnakeGame {
         }
 
         let head = self.snake.front().unwrap();
-        
+
         // 首先尝试直接去吃食物
         let path_to_food = self.find_path(*head, self.food, &self.snake);
-        
+
         if let Some(path) = &path_to_food {
             if path.len() > 1 {
                 let next_pos = path[1];
@@ -222,7 +227,7 @@ impl SnakeGame {
                 return;
             }
         }
-        
+
         // 如果无法直接到达食物，检查吃了食物后是否会被困住
         if !self.will_get_trapped_after_eating() {
             // 安全，继续尝试吃食物
@@ -235,11 +240,11 @@ impl SnakeGame {
                 }
             }
         }
-        
+
         // 如果吃食物不安全，寻找安全路径
         let tail = self.snake.back().unwrap();
         let path_to_tail = self.find_path(*head, *tail, &self.snake);
-        
+
         if let Some(path) = path_to_tail {
             if path.len() > 1 {
                 let next_pos = path[1];
@@ -248,9 +253,14 @@ impl SnakeGame {
                 return;
             }
         }
-        
+
         // 如果连尾巴都到不了，尝试随机安全方向
-        for direction in [Direction::Up, Direction::Down, Direction::Left, Direction::Right] {
+        for direction in [
+            Direction::Up,
+            Direction::Down,
+            Direction::Left,
+            Direction::Right,
+        ] {
             let next_pos = match direction {
                 Direction::Up => GamePosition {
                     x: head.x,
@@ -269,7 +279,7 @@ impl SnakeGame {
                     y: head.y,
                 },
             };
-            
+
             if self.is_safe_position(next_pos, &self.snake) {
                 self.direction = direction;
                 return;
@@ -281,24 +291,40 @@ impl SnakeGame {
     fn get_direction_to_position(&self, from: GamePosition, to: GamePosition) -> Direction {
         let dx = to.x - from.x;
         let dy = to.y - from.y;
-        
+
         // 处理边界环绕
         let adjusted_dx = if dx.abs() > self.grid_size / 2 {
-            if dx > 0 { dx - self.grid_size } else { dx + self.grid_size }
+            if dx > 0 {
+                dx - self.grid_size
+            } else {
+                dx + self.grid_size
+            }
         } else {
             dx
         };
-        
+
         let adjusted_dy = if dy.abs() > self.grid_size / 2 {
-            if dy > 0 { dy - self.grid_size } else { dy + self.grid_size }
+            if dy > 0 {
+                dy - self.grid_size
+            } else {
+                dy + self.grid_size
+            }
         } else {
             dy
         };
-        
+
         if adjusted_dx.abs() > adjusted_dy.abs() {
-            if adjusted_dx > 0 { Direction::Right } else { Direction::Left }
+            if adjusted_dx > 0 {
+                Direction::Right
+            } else {
+                Direction::Left
+            }
         } else {
-            if adjusted_dy > 0 { Direction::Down } else { Direction::Up }
+            if adjusted_dy > 0 {
+                Direction::Down
+            } else {
+                Direction::Up
+            }
         }
     }
 
@@ -410,6 +436,19 @@ fn update_ui(ui: &AppWindow, game: &SnakeGame) {
 
 #[cfg(not(target_family = "wasm"))]
 pub fn start_app() -> Result<(), Box<dyn std::error::Error>> {
+    let mut backend = i_slint_backend_winit::Backend::new().unwrap();
+
+    backend.window_attributes_hook = Some(Box::new(|builder| {
+        use i_slint_backend_winit::winit::platform::macos::WindowAttributesExtMacOS;
+
+        builder
+            .with_fullsize_content_view(true)
+            .with_title_hidden(true)
+            .with_titlebar_transparent(true)
+    }));
+
+    let _ = slint::platform::set_platform(Box::new(backend));
+
     let ui = AppWindow::new()?;
     let game_state = Rc::new(RefCell::new(SnakeGame::new()));
 
@@ -491,8 +530,6 @@ pub fn start_app() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-
-
 #[cfg(target_family = "wasm")]
 #[wasm_bindgen]
 pub fn start_app() -> Result<(), wasm_bindgen::JsValue> {
@@ -573,6 +610,7 @@ pub fn start_app() -> Result<(), wasm_bindgen::JsValue> {
         update_ui(&ui, &game);
     });
 
-    ui.run().map_err(|e| wasm_bindgen::JsValue::from_str(&e.to_string()))?;
+    ui.run()
+        .map_err(|e| wasm_bindgen::JsValue::from_str(&e.to_string()))?;
     Ok(())
-} 
+}
