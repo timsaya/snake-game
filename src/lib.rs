@@ -1,6 +1,7 @@
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::collections::{VecDeque, HashSet, BinaryHeap};
 use std::rc::Rc;
+use std::cmp::Ordering;
 
 #[cfg(target_family = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -15,10 +16,32 @@ enum Direction {
     Right,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct GamePosition {
     x: i32,
     y: i32,
+}
+
+// A*算法节点
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct AStarNode {
+    position: GamePosition,
+    g_cost: i32,
+    h_cost: i32,
+    parent: Option<GamePosition>,
+}
+
+impl PartialOrd for AStarNode {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for AStarNode {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // 优先队列需要最小堆，所以反转比较
+        (other.g_cost + other.h_cost).cmp(&(self.g_cost + self.h_cost))
+    }
 }
 
 struct SnakeGame {
@@ -32,6 +55,7 @@ struct SnakeGame {
     game_over: bool,
     game_paused: bool,
     game_running: bool,
+    auto_mode: bool,
 }
 
 impl SnakeGame {
@@ -54,6 +78,7 @@ impl SnakeGame {
             game_over: false,
             game_paused: false,
             game_running: false,
+            auto_mode: false,
         }
     }
 
@@ -70,6 +95,211 @@ impl SnakeGame {
         self.game_over = false;
         self.game_paused = false;
         self.game_running = false;
+        self.auto_mode = false;
+    }
+
+    fn toggle_auto_mode(&mut self) {
+        self.auto_mode = !self.auto_mode;
+    }
+
+    // 计算曼哈顿距离
+    fn manhattan_distance(&self, pos1: GamePosition, pos2: GamePosition) -> i32 {
+        let dx = (pos1.x - pos2.x).abs();
+        let dy = (pos1.y - pos2.y).abs();
+        dx + dy
+    }
+
+    // 获取相邻位置
+    fn get_neighbors(&self, pos: GamePosition) -> Vec<GamePosition> {
+        let mut neighbors = Vec::new();
+        let directions = [
+            (0, -1), // Up
+            (0, 1),  // Down
+            (-1, 0), // Left
+            (1, 0),  // Right
+        ];
+
+        for (dx, dy) in directions.iter() {
+            let new_x = (pos.x + dx + self.grid_size) % self.grid_size;
+            let new_y = (pos.y + dy + self.grid_size) % self.grid_size;
+            neighbors.push(GamePosition { x: new_x, y: new_y });
+        }
+        neighbors
+    }
+
+    // 检查位置是否安全（不在蛇身上）
+    fn is_safe_position(&self, pos: GamePosition, snake_body: &VecDeque<GamePosition>) -> bool {
+        !snake_body.contains(&pos)
+    }
+
+    // 预演：检查吃了食物后是否会被困住
+    fn will_get_trapped_after_eating(&self) -> bool {
+        // 模拟吃了食物后的蛇身
+        let mut simulated_snake = self.snake.clone();
+        simulated_snake.push_front(self.food);
+        
+        // 检查从食物位置是否能到达蛇尾
+        let tail = simulated_snake.back().unwrap();
+        let path_to_tail = self.find_path(self.food, *tail, &simulated_snake);
+        
+        path_to_tail.is_none()
+    }
+
+    // A*算法寻找最短路径
+    fn find_path(&self, start: GamePosition, goal: GamePosition, snake_body: &VecDeque<GamePosition>) -> Option<Vec<GamePosition>> {
+        let mut open_set = BinaryHeap::new();
+        let mut closed_set = HashSet::new();
+        let mut came_from = std::collections::HashMap::new();
+        let mut g_score = std::collections::HashMap::new();
+        
+        open_set.push(AStarNode {
+            position: start,
+            g_cost: 0,
+            h_cost: self.manhattan_distance(start, goal),
+            parent: None,
+        });
+        
+        g_score.insert(start, 0);
+        
+        while let Some(current) = open_set.pop() {
+            if current.position == goal {
+                // 重建路径
+                let mut path = Vec::new();
+                let mut current_pos = current.position;
+                path.push(current_pos);
+                
+                while let Some(parent) = came_from.get(&current_pos) {
+                    path.push(*parent);
+                    current_pos = *parent;
+                }
+                path.reverse();
+                return Some(path);
+            }
+            
+            closed_set.insert(current.position);
+            
+            for neighbor in self.get_neighbors(current.position) {
+                if closed_set.contains(&neighbor) || !self.is_safe_position(neighbor, snake_body) {
+                    continue;
+                }
+                
+                let tentative_g_score = g_score.get(&current.position).unwrap_or(&i32::MAX) + 1;
+                
+                if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&i32::MAX) {
+                    came_from.insert(neighbor, current.position);
+                    g_score.insert(neighbor, tentative_g_score);
+                    
+                    let h_score = self.manhattan_distance(neighbor, goal);
+                    open_set.push(AStarNode {
+                        position: neighbor,
+                        g_cost: tentative_g_score,
+                        h_cost: h_score,
+                        parent: Some(current.position),
+                    });
+                }
+            }
+        }
+        
+        None
+    }
+
+    // 自动移动算法
+    fn auto_move(&mut self) {
+        if !self.auto_mode || self.game_over || self.game_paused || !self.game_running {
+            return;
+        }
+
+        let head = self.snake.front().unwrap();
+        
+        // 首先尝试直接去吃食物
+        let path_to_food = self.find_path(*head, self.food, &self.snake);
+        
+        if let Some(path) = &path_to_food {
+            if path.len() > 1 {
+                let next_pos = path[1];
+                let new_direction = self.get_direction_to_position(*head, next_pos);
+                self.direction = new_direction;
+                return;
+            }
+        }
+        
+        // 如果无法直接到达食物，检查吃了食物后是否会被困住
+        if !self.will_get_trapped_after_eating() {
+            // 安全，继续尝试吃食物
+            if let Some(path) = &path_to_food {
+                if path.len() > 1 {
+                    let next_pos = path[1];
+                    let new_direction = self.get_direction_to_position(*head, next_pos);
+                    self.direction = new_direction;
+                    return;
+                }
+            }
+        }
+        
+        // 如果吃食物不安全，寻找安全路径
+        let tail = self.snake.back().unwrap();
+        let path_to_tail = self.find_path(*head, *tail, &self.snake);
+        
+        if let Some(path) = path_to_tail {
+            if path.len() > 1 {
+                let next_pos = path[1];
+                let new_direction = self.get_direction_to_position(*head, next_pos);
+                self.direction = new_direction;
+                return;
+            }
+        }
+        
+        // 如果连尾巴都到不了，尝试随机安全方向
+        for direction in [Direction::Up, Direction::Down, Direction::Left, Direction::Right] {
+            let next_pos = match direction {
+                Direction::Up => GamePosition {
+                    x: head.x,
+                    y: (head.y - 1 + self.grid_size) % self.grid_size,
+                },
+                Direction::Down => GamePosition {
+                    x: head.x,
+                    y: (head.y + 1) % self.grid_size,
+                },
+                Direction::Left => GamePosition {
+                    x: (head.x - 1 + self.grid_size) % self.grid_size,
+                    y: head.y,
+                },
+                Direction::Right => GamePosition {
+                    x: (head.x + 1) % self.grid_size,
+                    y: head.y,
+                },
+            };
+            
+            if self.is_safe_position(next_pos, &self.snake) {
+                self.direction = direction;
+                return;
+            }
+        }
+    }
+
+    // 获取从当前位置到目标位置的方向
+    fn get_direction_to_position(&self, from: GamePosition, to: GamePosition) -> Direction {
+        let dx = to.x - from.x;
+        let dy = to.y - from.y;
+        
+        // 处理边界环绕
+        let adjusted_dx = if dx.abs() > self.grid_size / 2 {
+            if dx > 0 { dx - self.grid_size } else { dx + self.grid_size }
+        } else {
+            dx
+        };
+        
+        let adjusted_dy = if dy.abs() > self.grid_size / 2 {
+            if dy > 0 { dy - self.grid_size } else { dy + self.grid_size }
+        } else {
+            dy
+        };
+        
+        if adjusted_dx.abs() > adjusted_dy.abs() {
+            if adjusted_dx > 0 { Direction::Right } else { Direction::Left }
+        } else {
+            if adjusted_dy > 0 { Direction::Down } else { Direction::Up }
+        }
     }
 
     fn change_direction(&mut self, new_direction: Direction) {
@@ -85,6 +315,11 @@ impl SnakeGame {
     fn move_snake(&mut self) {
         if self.game_over || self.game_paused || !self.game_running {
             return;
+        }
+
+        // 如果是自动模式，先计算下一步方向
+        if self.auto_mode {
+            self.auto_move();
         }
 
         let head = self.snake.front().unwrap();
@@ -165,6 +400,7 @@ fn update_ui(ui: &AppWindow, game: &SnakeGame) {
     ui.set_game_over(game.game_over);
     ui.set_game_paused(game.game_paused);
     ui.set_game_running(game.game_running);
+    ui.set_auto_mode(game.auto_mode);
     let snake_positions = game.get_snake_positions_array();
     ui.set_snake_positions(snake_positions.as_slice().into());
     ui.set_food_position(game.get_food_position());
@@ -241,6 +477,16 @@ pub fn start_app() -> Result<(), Box<dyn std::error::Error>> {
         update_ui(&ui, &game);
     });
 
+    // Toggle auto mode callback
+    let ui_weak = ui.as_weak();
+    let game_state_clone = game_state.clone();
+    ui.on_toggle_auto_mode(move || {
+        let ui = ui_weak.upgrade().unwrap();
+        let mut game = game_state_clone.borrow_mut();
+        game.toggle_auto_mode();
+        update_ui(&ui, &game);
+    });
+
     ui.run()?;
     Ok(())
 }
@@ -314,6 +560,16 @@ pub fn start_app() -> Result<(), wasm_bindgen::JsValue> {
             _ => return,
         };
         game.change_direction(new_direction);
+        update_ui(&ui, &game);
+    });
+
+    // Toggle auto mode callback
+    let ui_weak = ui.as_weak();
+    let game_state_clone = game_state.clone();
+    ui.on_toggle_auto_mode(move || {
+        let ui = ui_weak.upgrade().unwrap();
+        let mut game = game_state_clone.borrow_mut();
+        game.toggle_auto_mode();
         update_ui(&ui, &game);
     });
 

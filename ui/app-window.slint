@@ -11,12 +11,14 @@ export component AppWindow inherits Window {
     callback reset_game;
     callback move_snake(int);
     callback game_tick();
+    callback toggle_auto_mode();
     
     in property <int> score;
     in property <int> high_score;
     in property <bool> game_over;
     in property <bool> game_paused;
     in property <bool> game_running;
+    in property <bool> auto_mode;
     in property <[Position]> snake_positions: [];
     in property <Position> food_position;
     in property <int> grid_size: 20;
@@ -200,7 +202,7 @@ export component AppWindow inherits Window {
                     }
                     
                     Text {
-                        text: "Arrow Keys:\n↑ Move Up\n↓ Move Down\n← Move Left\n→ Move Right\n\nOther Controls:\nSpace Pause/Resume\nR Reset Game";
+                        text: "Arrow Keys:\n↑ Move Up\n↓ Move Down\n← Move Left\n→ Move Right\n\nOther Controls:\nSpace Pause/Resume\nR Reset Game\nA Toggle Auto Mode";
                         color: rgba(255, 255, 255, 0.9);
                         font-size: 13px;
                         horizontal-alignment: left;
@@ -242,6 +244,14 @@ export component AppWindow inherits Window {
                         reset_game();
                     }
                 }
+
+                Button {
+                    text: auto_mode ? "AUTO: ON" : "AUTO: OFF";
+                    
+                    clicked => {
+                        toggle_auto_mode();
+                    }
+                }
             }
         }
     }
@@ -272,6 +282,9 @@ export component AppWindow inherits Window {
             }
             if (k.text == "r" || k.text == "R") {
                 reset_game();
+            }
+            if (k.text == "a" || k.text == "A") {
+                toggle_auto_mode();
             }
             accept
         }
