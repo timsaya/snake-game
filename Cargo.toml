@@ -20,3 +20,12 @@ crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 wasm-bindgen = { version = "0.2.100" }
+
+
+
+[package.metadata.packager]
+before-packaging-command = "cargo build --release"
+product-name = "Snake Game"
+identifier = "com.snake-game"
+resources = ["Cargo.toml", "src", "icon.png"]
+icons = ["icon.png"]
